@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Form Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #FF6B6B 0%, #4ECDC4 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            padding: 2rem;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            color: #333;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+        }
+        .game-board {
+            display: grid;
+            grid-template-areas:
+                "adjective-zone word-pool noun-zone"
+                ". word-pool ."
+                "verb-zone word-pool adverb-zone";
+            grid-template-columns: 1fr 2fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 1.5rem;
+            height: 70vh;
+        }
+        .drop-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 15px;
+            border: 3px dashed #666;
+            transition: all 0.3s ease-in-out;
+            overflow-y: auto; 
+        }
+        .drop-zone.adjective {
+            grid-area: adjective-zone;
+            background-color: rgba(255, 99, 71, 0.2); /* Tomato */
+            border-color: #FF6347;
+        }
+        .drop-zone.noun {
+            grid-area: noun-zone;
+            background-color: rgba(100, 149, 237, 0.2); /* CornflowerBlue */
+            border-color: #6495ED;
+        }
+        .drop-zone.verb {
+            grid-area: verb-zone;
+            background-color: rgba(60, 179, 113, 0.2); /* MediumSeaGreen */
+            border-color: #3CB371;
+        }
+        .drop-zone.adverb {
+            grid-area: adverb-zone;
+            background-color: rgba(255, 215, 0, 0.2); /* Gold */
+            border-color: #FFD700;
+        }
+        .drop-zone-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 1rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .word-pool {
+            grid-area: word-pool;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: flex-start;
+            padding: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 15px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+        }
+        .word-item {
+            cursor: grab;
+            padding: 0.5rem 1rem;
+            margin: 0.4rem;
+            background-color: #4ECDC4;
+            color: white;
+            border-radius: 9999px;
+            font-weight: 500;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+            touch-action: none;
+        }
+        .word-item:active {
+            cursor: grabbing;
+        }
+        .word-item.dragged {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+        .drop-zone.hovered {
+            background-color: rgba(0, 0, 0, 0.1);
+            border-style: solid;
+            transform: scale(1.05);
+        }
+        .correct-answer {
+            background-color: #10B981; /* Green-500 */
+        }
+        .incorrect-answer {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .score-board {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4A5568;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .game-board {
+                grid-template-areas:
+                    "adjective-zone"
+                    "noun-zone"
+                    "verb-zone"
+                    "adverb-zone"
+                    "word-pool";
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(5, auto);
+                gap: 1rem;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-red-500 to-blue-500 flex items-center justify-center p-4">
+    <div class="container text-center rounded-2xl shadow-xl p-8 bg-white/90">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-blue-700 mb-6">Word Form Game</h1>
+        <p class="text-lg text-gray-700 mb-8">Drag and drop the words into the correct category.</p>
+
+        <div class="game-board rounded-xl p-4">
+            <div id="adjective-zone" class="drop-zone adjective" data-type="adjective">
+                <span class="drop-zone-title">Adjective</span>
+            </div>
+            <div id="noun-zone" class="drop-zone noun" data-type="noun">
+                <span class="drop-zone-title">Noun</span>
+            </div>
+            <div id="verb-zone" class="drop-zone verb" data-type="verb">
+                <span class="drop-zone-title">Verb</span>
+            </div>
+            <div id="adverb-zone" class="drop-zone adverb" data-type="adverb">
+                <span class="drop-zone-title">Adverb</span>
+            </div>
+
+            <div id="word-pool" class="word-pool">
+                <!-- Words will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <div id="score-board" class="score-board">
+            Score: <span id="correct-count">0</span> / <span id="total-count">200</span>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="message-box">
+            <p id="message-text" class="text-xl font-bold"></p>
+            <button id="reset-button" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 transition duration-300">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // 50 new words with their forms based on user's request
+        const wordData = [
+            { base: 'environment', noun: 'environment', verb: 'environ', adjective: 'environmental', adverb: 'environmentally' },
+            { base: 'pollution', noun: 'pollution', verb: 'pollute', adjective: 'polluted', adverb: 'pollutingly' },
+            { base: 'protect', noun: 'protection', verb: 'protect', adjective: 'protective', adverb: 'protectively' },
+            { base: 'deforestation', noun: 'deforestation', verb: 'deforest', adjective: 'deforested', adverb: 'deforestationally' },
+            { base: 'recycle', noun: 'recycling', verb: 'recycle', adjective: 'recycled', adverb: 'recyclably' },
+            { base: 'global warming', noun: 'global warming', verb: 'warm', adjective: 'warm', adverb: 'warmingly' },
+            { base: 'conservation', noun: 'conservation', verb: 'conserve', adjective: 'conservative', adverb: 'conservatively' },
+            { base: 'habitat', noun: 'habitat', verb: 'inhabit', adjective: 'inhabitable', adverb: 'habitually' },
+            { base: 'ecosystem', noun: 'ecosystem', verb: 'ecosystemically', adjective: 'ecosystemic', adverb: 'ecosystemically' },
+            { base: 'sustainable', noun: 'sustainability', verb: 'sustain', adjective: 'sustainable', adverb: 'sustainably' },
+            { base: 'community', noun: 'community', verb: 'commune', adjective: 'communal', adverb: 'communally' },
+            { base: 'culture', noun: 'culture', verb: 'cultivate', adjective: 'cultural', adverb: 'culturally' },
+            { base: 'tradition', noun: 'tradition', verb: 'traditionally', adjective: 'traditional', adverb: 'traditionally' },
+            { base: 'voluntary', noun: 'volunteer', verb: 'volunteer', adjective: 'voluntary', adverb: 'voluntarily' },
+            { base: 'charity', noun: 'charity', verb: 'charitably', adjective: 'charitable', adverb: 'charitably' },
+            { base: 'responsibility', noun: 'responsibility', verb: 'be responsible', adjective: 'responsible', adverb: 'responsibly' },
+            { base: 'diversity', noun: 'diversity', verb: 'diversify', adjective: 'diverse', adverb: 'diversely' },
+            { base: 'respect', noun: 'respect', verb: 'respect', adjective: 'respectful', adverb: 'respectfully' },
+            { base: 'custom', noun: 'custom', verb: 'customize', adjective: 'customary', adverb: 'customarily' },
+            { base: 'festival', noun: 'festival', verb: 'celebrate', adjective: 'festive', adverb: 'festively' },
+            { base: 'education', noun: 'education', verb: 'educate', adjective: 'educational', adverb: 'educationally' },
+            { base: 'curriculum', noun: 'curriculum', verb: 'curriculate', adjective: 'curricular', adverb: 'curricularly' },
+            { base: 'knowledge', noun: 'knowledge', verb: 'know', adjective: 'knowledgeable', adverb: 'knowledgeably' },
+            { base: 'technology', noun: 'technology', verb: 'technologize', adjective: 'technological', adverb: 'technologically' },
+            { base: 'develop', noun: 'development', verb: 'develop', adjective: 'developing', adverb: 'developingly' },
+            { base: 'innovation', noun: 'innovation', verb: 'innovate', adjective: 'innovative', adverb: 'innovatively' },
+            { base: 'efficient', noun: 'efficiency', verb: 'efficiently', adjective: 'efficient', adverb: 'efficiently' },
+            { base: 'communicate', noun: 'communication', verb: 'communicate', adjective: 'communicative', adverb: 'communicatively' },
+            { base: 'access', noun: 'access', verb: 'access', adjective: 'accessible', adverb: 'accessibly' },
+            { base: 'tool', noun: 'tool', verb: 'tool', adjective: 'tooling', adverb: 'tooling' },
+            { base: 'career', noun: 'career', verb: 'career', adjective: 'career-minded', adverb: 'career-wise' },
+            { base: 'profession', noun: 'profession', verb: 'profess', adjective: 'professional', adverb: 'professionally' },
+            { base: 'opportunity', noun: 'opportunity', verb: 'opportunistically', adjective: 'opportunistic', adverb: 'opportunistically' },
+            { base: 'economy', noun: 'economy', verb: 'economize', adjective: 'economic', adverb: 'economically' },
+            { base: 'business', noun: 'business', verb: 'busy', adjective: 'businesslike', adverb: 'busily' },
+            { base: 'customer', noun: 'customer', verb: 'customize', adjective: 'customary', adverb: 'customarily' },
+            { base: 'salary', noun: 'salary', verb: 'salaried', adjective: 'salaried', adverb: 'salarily' },
+            { base: 'employed', noun: 'employment', verb: 'employ', adjective: 'employed', adverb: 'employably' },
+            { base: 'experience', noun: 'experience', verb: 'experience', adjective: 'experienced', adverb: 'experientially' },
+            { base: 'entrepreneur', noun: 'entrepreneur', verb: 'entrepreneurially', adjective: 'entrepreneurial', adverb: 'entrepreneurially' },
+            { base: 'healthy', noun: 'health', verb: 'heal', adjective: 'healthy', adverb: 'healthily' },
+            { base: 'diet', noun: 'diet', verb: 'diet', adjective: 'dietary', adverb: 'dietetically' },
+            { base: 'exercise', noun: 'exercise', verb: 'exercise', adjective: 'exercised', adverb: 'exercisingly' },
+            { base: 'mental', noun: 'mind', verb: 'mentally', adjective: 'mental', adverb: 'mentally' },
+            { base: 'stress', noun: 'stress', verb: 'stress', adjective: 'stressful', adverb: 'stressfully' },
+            { base: 'addiction', noun: 'addiction', verb: 'addict', adjective: 'addictive', adverb: 'addictively' },
+            { base: 'relax', noun: 'relaxation', verb: 'relax', adjective: 'relaxing', adverb: 'relaxingly' },
+            { base: 'lifestyle', noun: 'lifestyle', verb: 'live', adjective: 'lifelike', adverb: 'livingly' },
+            { base: 'nutrition', noun: 'nutrition', verb: 'nourish', adjective: 'nutritional', adverb: 'nutritionally' },
+            { base: 'prevention', noun: 'prevention', verb: 'prevent', adjective: 'preventable', adverb: 'preventively' }
+        ];
+        
+        let words = [];
+        let correctCount = 0;
+        const totalWords = wordData.length * 4;
+
+        const correctCountElement = document.getElementById('correct-count');
+        const totalCountElement = document.getElementById('total-count');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const resetButton = document.getElementById('reset-button');
+        const wordPool = document.getElementById('word-pool');
+        const dropZones = document.querySelectorAll('.drop-zone');
+        
+        totalCountElement.textContent = totalWords;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function createWords() {
+            words = [];
+            wordData.forEach(item => {
+                words.push({ text: item.adjective, type: 'adjective' });
+                words.push({ text: item.noun, type: 'noun' });
+                words.push({ text: item.verb, type: 'verb' });
+                words.push({ text: item.adverb, type: 'adverb' });
+            });
+            shuffleArray(words);
+        }
+
+        function renderWords() {
+            wordPool.innerHTML = '';
+            words.forEach((word, index) => {
+                const wordItem = document.createElement('div');
+                wordItem.className = 'word-item';
+                wordItem.setAttribute('draggable', 'true');
+                wordItem.id = `word-${index}`;
+                wordItem.dataset.type = word.type;
+                wordItem.textContent = word.text;
+                wordPool.appendChild(wordItem);
+            });
+        }
+
+        function setupDragAndDrop() {
+            let draggedItem = null;
+
+            document.addEventListener('dragstart', (e) => {
+                if (e.target.classList.contains('word-item')) {
+                    draggedItem = e.target;
+                    setTimeout(() => {
+                        draggedItem.classList.add('dragged');
+                    }, 0);
+                }
+            });
+
+            document.addEventListener('dragend', () => {
+                if (draggedItem) {
+                    draggedItem.classList.remove('dragged');
+                    draggedItem = null;
+                }
+            });
+
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (draggedItem && draggedItem.parentElement !== zone) {
+                        zone.classList.add('hovered');
+                    }
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('hovered');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('hovered');
+
+                    if (draggedItem) {
+                        const droppedType = zone.dataset.type;
+                        const draggedType = draggedItem.dataset.type;
+
+                        zone.appendChild(draggedItem);
+
+                        if (droppedType === draggedType) {
+                            draggedItem.setAttribute('draggable', 'false');
+                            draggedItem.classList.remove('incorrect-answer');
+                            draggedItem.classList.add('correct-answer');
+                            correctCount++;
+                            updateScore();
+                        } else {
+                            draggedItem.setAttribute('draggable', 'true');
+                            draggedItem.classList.add('incorrect-answer');
+                            setTimeout(() => {
+                                draggedItem.classList.remove('incorrect-answer');
+                            }, 500);
+                        }
+                        checkWinCondition();
+                    }
+                });
+            });
+        }
+
+        function updateScore() {
+            correctCountElement.textContent = correctCount;
+        }
+
+        function checkWinCondition() {
+            if (wordPool.children.length === 0) {
+                messageText.textContent = `Game Over! You got ${correctCount} out of ${totalWords} correct.`;
+                messageBox.style.display = 'flex';
+            }
+        }
+
+        function resetGame() {
+            correctCount = 0;
+            updateScore();
+            createWords();
+            renderWords();
+
+            dropZones.forEach(zone => {
+                const wordsInZone = Array.from(zone.querySelectorAll('.word-item'));
+                wordsInZone.forEach(word => {
+                    word.classList.remove('correct-answer');
+                    word.classList.remove('incorrect-answer');
+                    word.setAttribute('draggable', 'true');
+                });
+            });
+
+            messageBox.style.display = 'none';
+        }
+
+        function init() {
+            createWords();
+            renderWords();
+            setupDragAndDrop();
+
+            resetButton.addEventListener('click', resetGame);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
